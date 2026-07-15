@@ -57,6 +57,11 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".ui.DebugActivity"
+            android:exported="false"
+            android:label="Hermes Debug" />
+
     </application>
 
 </manifest>

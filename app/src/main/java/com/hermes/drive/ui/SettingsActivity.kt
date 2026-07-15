@@ -3,6 +3,7 @@ package com.hermes.drive.ui
 import android.Manifest
 import android.os.Build
 import android.os.Bundle
+import android.content.Intent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -78,6 +79,9 @@ class SettingsActivity : ComponentActivity() {
                             DriveAssistantService.start(this@SettingsActivity)
                             running = true
                         }
+                    },
+                    onOpenDebug = {
+                        startActivity(Intent(this@SettingsActivity, DebugActivity::class.java))
                     },
                 )
             }

@@ -41,6 +41,7 @@ fun SettingsScreen(
     initialUrl: String,
     running: Boolean,
     onToggleRunning: () -> Unit,
+    onOpenDebug: () -> Unit,
 ) {
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(modifier = Modifier.padding(24.dp)) {
@@ -101,6 +102,8 @@ fun SettingsScreen(
                 else "Assistant is stopped.",
                 style = MaterialTheme.typography.bodySmall,
             )
+            Spacer(Modifier.height(12.dp))
+            Button(onClick = onOpenDebug) { Text("Debug log") }
             Spacer(Modifier.height(24.dp))
             HorizontalDivider()
             Spacer(Modifier.height(16.dp))

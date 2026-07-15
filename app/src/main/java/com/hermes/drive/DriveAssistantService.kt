@@ -34,6 +34,7 @@ class DriveAssistantService : Service() {
         super.onCreate()
         settingsStore = SettingsStore(this)
         ChatNotificationManager.ensureChannel(this)
+        DebugLog.event(this, "Service onCreate")
         session.addAssistant(getString(R.string.engine_loading))
         startForeground(
             ChatNotificationManager.NOTIF_ID,
@@ -47,6 +48,7 @@ class DriveAssistantService : Service() {
         loading = true
         val settings = settingsStore.settings.first()
         if (!ModelManager.modelExists(this, settings.modelSize)) {
+            DebugLog.event(this, "Model missing for size=${settings.modelSize}")
             session.clear()
             session.addAssistant(getString(R.string.engine_missing))
             post()
@@ -54,12 +56,15 @@ class DriveAssistantService : Service() {
             return
         }
         val path = java.io.File(filesDir, ModelManager.modelFileFor(settings.modelSize)).absolutePath
+        DebugLog.event(this, "Model found: $path (${java.io.File(path).length()} bytes)")
         engine = LiteRtEngine(this, path, SYSTEM_PROMPT)
         try {
             engine?.load()
+            DebugLog.event(this, "Engine loaded OK")
             session.clear()
             session.addAssistant("Hermes ready. Tap reply and speak.")
         } catch (e: Exception) {
+            DebugLog.event(this, "Engine load FAILED: ${e.message}")
             session.clear()
             session.addAssistant("Failed to load model: ${e.message}")
         }
@@ -69,17 +74,20 @@ class DriveAssistantService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val query = intent?.getStringExtra(EXTRA_QUERY)
+        DebugLog.event(this, "onStartCommand query=${if (query.isNullOrBlank()) "<none>" else "\"$query\""}")
         if (!query.isNullOrBlank()) scope.launch { handleQuery(query) }
         return START_STICKY
     }
 
     private suspend fun handleQuery(query: String) {
         if (engine == null || !engine!!.isReady) {
+            DebugLog.event(this, "Query ignored: engine not ready")
             session.addUser(query)
             session.addAssistant("Hermes isn't ready yet. Wait a moment and try again.")
             post()
             return
         }
+        DebugLog.event(this, "Query: $query")
         session.addUser(query)
         session.addAssistant("…")
         post()
@@ -90,7 +98,9 @@ class DriveAssistantService : Service() {
                 session.updateLastAssistant(sb.toString())
                 post()
             }
+            DebugLog.event(this, "Answer (${sb.length} chars): ${sb.toString().take(120)}")
         } catch (e: Exception) {
+            DebugLog.event(this, "Answer FAILED: ${e.message}")
             session.updateLastAssistant("Sorry, something went wrong: ${e.message}")
         }
         val final = sb.toString().trim().ifEmpty { "(no response)" }

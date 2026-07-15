@@ -14,7 +14,10 @@ class CarModeReceiver : BroadcastReceiver() {
         when (intent.action) {
             "android.intent.action.ENTER_CAR",
             "android.intent.action.HEAD_UNIT_START",
-            -> DriveAssistantService.start(context)
+            -> {
+                DebugLog.event(context, "CarModeReceiver: ${intent.action} -> starting service")
+                DriveAssistantService.start(context)
+            }
         }
     }
 }
