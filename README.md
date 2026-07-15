@@ -26,15 +26,12 @@ minSdk 26 so it runs on older cars/phones too.
 
 ## Default model
 
-- **Fast (default):** `Qwen2.5-1.5B-Instruct` (q8 `.litertlm`, ~1 GB) — ungated on HuggingFace, so the
-  in-app **Download model** button works with one tap over WiFi. Good instruction-following and fast
-  on the Mali-G57.
-- **Quality (in-app toggle):** `Gemma3-4B-IT` (~2 GB) — **license-gated** on HuggingFace. The one-tap
-  downloader will return a clear "license-gated" error; to use it, log in to HF + accept the Gemma
-  license on a PC, download the `.litertlm`, then `adb push` it (command below).
-
-Other ungated options that download fine (just paste the URL): `Qwen3-0.6B`, `Qwen3-1.7B`,
-`SmolLM2-360M-Instruct` (all in the `litert-community` org).
+- **Fast (default):** `Qwen3-0.6B` (~0.5 GB `.litertlm`) — tiny, snappy first token on the Helio G99;
+  best for quick in-car Q&A. Download is one tap (ungated on HuggingFace).
+- **Quality (in-app toggle):** `Qwen2.5-1.5B-Instruct` (~1.5 GB) — smarter, more thorough answers,
+  slower first token. Also ungated; switch the chip and tap Download. The app keeps both files in
+  `filesDir` so you can flip between them without re-downloading.
+  `SmolLM2-360M-Instruct` (all in the `litert-community` org).
 
 ## Build
 

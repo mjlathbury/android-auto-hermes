@@ -50,17 +50,26 @@ fun SettingsScreen(
             Spacer(Modifier.height(16.dp))
 
             Text("On-device model", style = MaterialTheme.typography.titleMedium)
+            var urlState by remember(initialUrl) {
+                mutableStateOf(initialUrl)
+            }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 FilterChip(
                     selected = settings.modelSize == SettingsStore.MODEL_FAST,
-                    onClick = { onModelSizeChange(SettingsStore.MODEL_FAST) },
-                    label = { Text("Fast (Qwen 1.5B)") },
+                    onClick = {
+                        urlState = SettingsStore.urlForSize(SettingsStore.MODEL_FAST)
+                        onModelSizeChange(SettingsStore.MODEL_FAST)
+                    },
+                    label = { Text("Fast (Qwen3 0.6B)") },
                 )
                 Spacer(Modifier.width(8.dp))
                 FilterChip(
                     selected = settings.modelSize == SettingsStore.MODEL_QUALITY,
-                    onClick = { onModelSizeChange(SettingsStore.MODEL_QUALITY) },
-                    label = { Text("Quality (Gemma 4B, gated)") },
+                    onClick = {
+                        urlState = SettingsStore.urlForSize(SettingsStore.MODEL_QUALITY)
+                        onModelSizeChange(SettingsStore.MODEL_QUALITY)
+                    },
+                    label = { Text("Quality (Qwen2.5 1.5B)") },
                 )
             }
             Text(
@@ -72,9 +81,6 @@ fun SettingsScreen(
                 style = MaterialTheme.typography.bodySmall,
             )
             Spacer(Modifier.height(12.dp))
-            var urlState by remember(initialUrl) {
-                mutableStateOf(initialUrl)
-            }
             OutlinedTextField(
                 value = urlState,
                 onValueChange = {

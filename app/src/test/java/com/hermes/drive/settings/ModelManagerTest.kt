@@ -66,7 +66,10 @@ class ModelManagerTest {
 
     @Test
     fun defaultUrlPointsAtUngatedQwen() {
-        assertTrue(SettingsStore.DEFAULT_MODEL_URL.contains("Qwen2.5-1.5B-Instruct"))
+        // Default (fast) is the small Qwen3-0.6B; quality is Qwen2.5-1.5B.
+        assertTrue(SettingsStore.DEFAULT_MODEL_URL.contains("Qwen3-0.6B"))
         assertTrue(SettingsStore.DEFAULT_MODEL_URL.endsWith(".litertlm?download=true"))
+        assertTrue(SettingsStore.urlForSize(SettingsStore.MODEL_QUALITY).contains("Qwen2.5-1.5B-Instruct"))
+        assertTrue(SettingsStore.urlForSize(SettingsStore.MODEL_FAST).contains("Qwen3-0.6B"))
     }
 }

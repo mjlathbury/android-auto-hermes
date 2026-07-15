@@ -50,14 +50,22 @@ class SettingsStore(private val context: Context) {
         const val MODEL_QUALITY = "quality"
 
         // .litertlm model files, expected under the app's filesDir (downloaded once over WiFi).
-        // Fast default is an UNGATED model (downloads anonymously). Quality is Gemma3-4B which is
-        // license-gated on HuggingFace — for that one, download on a logged-in PC and adb push it,
-        // or paste a URL you have access to.
-        const val FAST_MODEL_FILE = "qwen2.5-1.5b-instruct.litertlm"
-        const val QUALITY_MODEL_FILE = "gemma3-4b-it.litertlm"
+        // Both are UNGATED on HuggingFace, so in-app download works with one tap for either.
+        // Default (fast) is the small Qwen3-0.6B; quality is Qwen2.5-1.5B (smarter, slower).
+        const val FAST_MODEL_FILE = "Qwen3-0.6B.litertlm"
+        const val QUALITY_MODEL_FILE = "qwen2.5-1.5b-instruct.litertlm"
 
-        // Default download URL: ungated Qwen2.5-1.5B-Instruct (q8 quant) — works with one tap.
-        const val DEFAULT_MODEL_URL =
+        // Default download URLs (ungated). The quality file is the one already on-device for you.
+        const val FAST_MODEL_URL =
+            "https://huggingface.co/litert-community/Qwen3-0.6B/resolve/main/Qwen3-0.6B.litertlm?download=true"
+        const val QUALITY_MODEL_URL =
             "https://huggingface.co/litert-community/Qwen2.5-1.5B-Instruct/resolve/main/Qwen2.5-1.5B-Instruct_multi-prefill-seq_q8_ekv4096.litertlm?download=true"
+
+        /** Default download URL for a given size (used to prefill the URL field). */
+        fun urlForSize(size: String): String =
+            if (size == MODEL_QUALITY) QUALITY_MODEL_URL else FAST_MODEL_URL
+
+        // Default download URL used when the settings field is blank.
+        const val DEFAULT_MODEL_URL = FAST_MODEL_URL
     }
 }
