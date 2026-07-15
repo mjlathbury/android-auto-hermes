@@ -6,6 +6,7 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <application
         android:name=".HermesApplication"
@@ -35,6 +36,15 @@
         <receiver
             android:name=".MessageReplyReceiver"
             android:exported="false" />
+
+        <receiver
+            android:name=".CarModeReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.ENTER_CAR" />
+                <action android:name="android.intent.action.HEAD_UNIT_START" />
+            </intent-filter>
+        </receiver>
 
         <activity
             android:name=".ui.SettingsActivity"

@@ -39,6 +39,8 @@ fun SettingsScreen(
     downloading: Boolean,
     status: String,
     initialUrl: String,
+    running: Boolean,
+    onToggleRunning: () -> Unit,
 ) {
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(modifier = Modifier.padding(24.dp)) {
@@ -85,6 +87,20 @@ fun SettingsScreen(
                 Text(if (downloading) "Downloading…" else "Download model")
             }
 
+            Spacer(Modifier.height(24.dp))
+            HorizontalDivider()
+            Spacer(Modifier.height(16.dp))
+            Button(
+                onClick = onToggleRunning,
+                enabled = modelExists(settings.modelSize),
+            ) {
+                Text(if (running) "Stop Hermes" else "Start Hermes")
+            }
+            Text(
+                if (running) "Assistant is live — connect Android Auto or tap Reply on the notification to speak."
+                else "Assistant is stopped.",
+                style = MaterialTheme.typography.bodySmall,
+            )
             Spacer(Modifier.height(24.dp))
             HorizontalDivider()
             Spacer(Modifier.height(16.dp))

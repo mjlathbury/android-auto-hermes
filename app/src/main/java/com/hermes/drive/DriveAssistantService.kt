@@ -126,5 +126,18 @@ class DriveAssistantService : Service() {
             }
             ContextCompat.startForegroundService(context, intent)
         }
+
+        /** Start the assistant with no query — boots the engine and posts the "ready" notification. */
+        fun start(context: Context) {
+            ContextCompat.startForegroundService(
+                context,
+                Intent(context, DriveAssistantService::class.java),
+            )
+        }
+
+        /** Stop the foreground assistant (frees the model from RAM). */
+        fun stop(context: Context) {
+            context.stopService(Intent(context, DriveAssistantService::class.java))
+        }
     }
 }

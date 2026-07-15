@@ -15,6 +15,7 @@ import androidx.lifecycle.lifecycleScope
 import com.hermes.drive.settings.HermesSettings
 import com.hermes.drive.settings.ModelManager
 import com.hermes.drive.settings.SettingsStore
+import com.hermes.drive.DriveAssistantService
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -37,6 +38,7 @@ class SettingsActivity : ComponentActivity() {
                 }
                 var downloading by remember { mutableStateOf(false) }
                 var status by remember { mutableStateOf("") }
+                var running by remember { mutableStateOf(false) }
                 val initialUrl = remember(settings.cloudBaseUrl) {
                     settings.cloudBaseUrl.ifBlank { SettingsStore.DEFAULT_MODEL_URL }
                 }
@@ -67,6 +69,16 @@ class SettingsActivity : ComponentActivity() {
                     downloading = downloading,
                     status = status,
                     initialUrl = initialUrl,
+                    running = running,
+                    onToggleRunning = {
+                        if (running) {
+                            DriveAssistantService.stop(this@SettingsActivity)
+                            running = false
+                        } else {
+                            DriveAssistantService.start(this@SettingsActivity)
+                            running = true
+                        }
+                    },
                 )
             }
         }
