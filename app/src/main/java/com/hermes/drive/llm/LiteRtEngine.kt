@@ -10,19 +10,29 @@ import com.google.ai.edge.litertlm.Engine
 import com.google.ai.edge.litertlm.EngineConfig
 import com.google.ai.edge.litertlm.Message
 import com.google.ai.edge.litertlm.MessageCallback
+import com.hermes.drive.DebugLog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicReference
 
 /**
- * On-device LLM via Google's LiteRT-LM Kotlin API (GPU backend).
- * One [Conversation] is kept alive for the session so multi-turn context persists.
+ * On-device LLM via Google's LiteRT-LM Kotlin API.
  *
- * A streamed [Message] carries its text in [Message.getContents]: a list of [Content],
- * where [Content.Text] holds the raw string. We flatten those into the partial-text flow.
+ * Backend strategy (red: the Mali-G57 GPU delegate has been observed to hang during initialization
+ * on some devices, never returning and never throwing a Kotlin exception). To stay robust we:
+ *   1. Try GPU first (fastest when it works).
+ *   2. On any exception, fall back to CPU (always works, just slower first token).
+ *   3. Run initialization on a worker thread with a timeout (the "hang watchdog"). If the native
+ *      layer stalls, the thread is interrupted/stopped and we surface a clear error instead of
+ *      hanging forever with no log line.
+ *
+ * One [Conversation] is kept alive for the session so multi-turn context persists.
  */
 class LiteRtEngine(
     private val context: Context,
@@ -38,20 +48,74 @@ class LiteRtEngine(
 
     override val isReady: Boolean get() = conversation != null
 
-    override suspend fun load() = withContext(Dispatchers.Default) {
+    /** Seconds to wait for native init before declaring a hang and falling back / failing. */
+    private val LOAD_TIMEOUT_SECONDS = 90L
+
+    override suspend fun load() = withContext(Dispatchers.IO) {
         if (conversation != null) return@withContext
-        val cfg = EngineConfig(
-            modelPath = modelPath,
-            backend = Backend.GPU(),
-            cacheDir = context.cacheDir.path,
-        )
-        val eng = Engine(cfg)
-        eng.initialize()
-        val conv = eng.createConversation(
-            ConversationConfig(systemInstruction = Contents.of(systemInstruction)),
-        )
-        engine = eng
-        conversation = conv
+
+        // GPU attempt first.
+        val gpuResult = loadWithBackend(Backend.GPU(), "GPU")
+        if (gpuResult == null) {
+            // success
+            DebugLog.event(context, "Engine loaded OK (backend=GPU)")
+            return@withContext
+        }
+        // GPU failed (exception or hang) -> fall back to CPU.
+        DebugLog.event(context, "GPU backend failed ($gpuResult) -> falling back to CPU")
+        val cpuResult = loadWithBackend(Backend.CPU(), "CPU")
+        if (cpuResult == null) {
+            DebugLog.event(context, "Engine loaded OK (backend=CPU)")
+            return@withContext
+        }
+        val msg = "Failed to load model on both GPU and CPU. Last error: $cpuResult"
+        DebugLog.event(context, "Engine load FAILED: $msg")
+        throw RuntimeException(msg)
+    }
+
+    /**
+     * Attempts to initialize the engine with [backend]. Runs on a worker thread with a timeout so a
+     * native hang doesn't stall forever. Returns null on success, or an error description on
+     * failure/hang.
+     */
+    private fun loadWithBackend(backend: Backend, label: String): String? {
+        val executor = Executors.newSingleThreadExecutor()
+        val errorRef = AtomicReference<String?>(null)
+        try {
+            val future = executor.submit {
+                try {
+                    DebugLog.event(context, "Engine.load($label) starting…")
+                    val cfg = EngineConfig(
+                        modelPath = modelPath,
+                        backend = backend,
+                        cacheDir = context.cacheDir.path,
+                    )
+                    val eng = Engine(cfg)
+                    eng.initialize()
+                    val conv = eng.createConversation(
+                        ConversationConfig(systemInstruction = Contents.of(systemInstruction)),
+                    )
+                    engine = eng
+                    conversation = conv
+                    DebugLog.event(context, "Engine.load($label) initialized")
+                } catch (t: Throwable) {
+                    errorRef.set("${t::class.java.simpleName}: ${t.message}")
+                }
+            }
+            try {
+                future.get(LOAD_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            } catch (e: java.util.concurrent.TimeoutException) {
+                future.cancel(true)
+                // Best-effort cleanup of a half-initialized native engine.
+                try { engine?.close() } catch (_: Exception) {}
+                engine = null
+                conversation = null
+                return "($label) init timed out after ${LOAD_TIMEOUT_SECONDS}s (native hang)"
+            }
+        } finally {
+            executor.shutdownNow()
+        }
+        return errorRef.get()
     }
 
     override fun ask(userText: String): Flow<String> = callbackFlow {
@@ -78,7 +142,7 @@ class LiteRtEngine(
         }
         conv.sendMessageAsync(userText, callback)
         awaitClose { /* conversation is reused; no per-call teardown */ }
-    }.flowOn(Dispatchers.Default)
+    }.flowOn(Dispatchers.IO)
 
     override fun close() {
         try { conversation?.close() } catch (_: Exception) { /* best effort */ }
