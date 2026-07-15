@@ -26,8 +26,15 @@ minSdk 26 so it runs on older cars/phones too.
 
 ## Default model
 
-- **Fast (default):** `Gemma3-1B-IT` (~0.5 GB `.litertlm`) — near-instant on the G57.
-- **Quality (in-app toggle):** `Gemma3-4B-IT` (~2 GB) — smarter, slower.
+- **Fast (default):** `Qwen2.5-1.5B-Instruct` (q8 `.litertlm`, ~1 GB) — ungated on HuggingFace, so the
+  in-app **Download model** button works with one tap over WiFi. Good instruction-following and fast
+  on the Mali-G57.
+- **Quality (in-app toggle):** `Gemma3-4B-IT` (~2 GB) — **license-gated** on HuggingFace. The one-tap
+  downloader will return a clear "license-gated" error; to use it, log in to HF + accept the Gemma
+  license on a PC, download the `.litertlm`, then `adb push` it (command below).
+
+Other ungated options that download fine (just paste the URL): `Qwen3-0.6B`, `Qwen3-1.7B`,
+`SmolLM2-360M-Instruct` (all in the `litert-community` org).
 
 ## Build
 
@@ -49,12 +56,13 @@ Unit tests (pure-Kotlin `ChatSession`, no device needed):
 1. `adb install app/build/outputs/apk/debug/app-debug.apk`
 2. Open **Hermes Drive** from the app drawer once (creates the notification channel + lets you
    grant the notification permission).
-3. Download the model: in the app, pick Fast/Quality, paste the `.litertlm` URL, tap **Download
-   model**. Or push it directly:
+3. Download the model: the **Model URL** field is pre-filled with the ungated Qwen2.5-1.5B link —
+   just tap **Download model** over WiFi. Or push a model directly:
    ```bash
-   adb push gemma3-1b-it.litertlm /data/data/com.hermes.drive/files/gemma3-1b-it.litertlm
+   adb push qwen2.5-1.5b-instruct.litertlm /data/data/com.hermes.drive/files/qwen2.5-1.5b-instruct.litertlm
    ```
-   (Gemma3-1B-IT `.litertlm` lives in the `litert-community` org on HuggingFace.)
+   (For the gated Gemma3-4B, download it on a logged-in PC after accepting the license, then push it
+   to the same `files/` path with the name `gemma3-4b-it.litertlm`.)
 4. Connect to the car (or run the **Desktop Head Unit** emulator) and tap Reply on the
    Hermes notification to speak. The first answer after a fresh start takes a few seconds
    while the model loads; subsequent turns are fast.

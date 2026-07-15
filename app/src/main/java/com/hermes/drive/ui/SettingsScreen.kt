@@ -38,6 +38,7 @@ fun SettingsScreen(
     modelExists: (String) -> Boolean,
     downloading: Boolean,
     status: String,
+    initialUrl: String,
 ) {
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(modifier = Modifier.padding(24.dp)) {
@@ -49,13 +50,13 @@ fun SettingsScreen(
                 FilterChip(
                     selected = settings.modelSize == SettingsStore.MODEL_FAST,
                     onClick = { onModelSizeChange(SettingsStore.MODEL_FAST) },
-                    label = { Text("Fast (1B)") },
+                    label = { Text("Fast (Qwen 1.5B)") },
                 )
                 Spacer(Modifier.width(8.dp))
                 FilterChip(
                     selected = settings.modelSize == SettingsStore.MODEL_QUALITY,
                     onClick = { onModelSizeChange(SettingsStore.MODEL_QUALITY) },
-                    label = { Text("Quality (4B)") },
+                    label = { Text("Quality (Gemma 4B, gated)") },
                 )
             }
             Text(
@@ -67,8 +68,8 @@ fun SettingsScreen(
                 style = MaterialTheme.typography.bodySmall,
             )
             Spacer(Modifier.height(12.dp))
-            var urlState by remember(settings.cloudBaseUrl) {
-                mutableStateOf(settings.cloudBaseUrl)
+            var urlState by remember(initialUrl) {
+                mutableStateOf(initialUrl)
             }
             OutlinedTextField(
                 value = urlState,

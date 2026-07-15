@@ -37,6 +37,9 @@ class SettingsActivity : ComponentActivity() {
                 }
                 var downloading by remember { mutableStateOf(false) }
                 var status by remember { mutableStateOf("") }
+                val initialUrl = remember(settings.cloudBaseUrl) {
+                    settings.cloudBaseUrl.ifBlank { SettingsStore.DEFAULT_MODEL_URL }
+                }
 
                 SettingsScreen(
                     settings = settings,
@@ -63,6 +66,7 @@ class SettingsActivity : ComponentActivity() {
                     modelExists = { size -> ModelManager.modelExists(this@SettingsActivity, size) },
                     downloading = downloading,
                     status = status,
+                    initialUrl = initialUrl,
                 )
             }
         }

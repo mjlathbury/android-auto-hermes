@@ -49,8 +49,15 @@ class SettingsStore(private val context: Context) {
         const val MODEL_FAST = "fast"
         const val MODEL_QUALITY = "quality"
 
-        // .litertlm model files, expected under the app's filesDir (downloaded once over WiFi)
-        const val FAST_MODEL_FILE = "gemma3-1b-it.litertlm"
+        // .litertlm model files, expected under the app's filesDir (downloaded once over WiFi).
+        // Fast default is an UNGATED model (downloads anonymously). Quality is Gemma3-4B which is
+        // license-gated on HuggingFace — for that one, download on a logged-in PC and adb push it,
+        // or paste a URL you have access to.
+        const val FAST_MODEL_FILE = "qwen2.5-1.5b-instruct.litertlm"
         const val QUALITY_MODEL_FILE = "gemma3-4b-it.litertlm"
+
+        // Default download URL: ungated Qwen2.5-1.5B-Instruct (q8 quant) — works with one tap.
+        const val DEFAULT_MODEL_URL =
+            "https://huggingface.co/litert-community/Qwen2.5-1.5B-Instruct/resolve/main/Qwen2.5-1.5B-Instruct_multi-prefill-seq_q8_ekv4096.litertlm?download=true"
     }
 }
