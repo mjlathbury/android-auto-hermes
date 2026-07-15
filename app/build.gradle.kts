@@ -1,3 +1,16 @@
+import java.util.Properties
+import java.io.File
+
+// Auto-incrementing build number, persisted in version.properties so it survives across builds.
+val versionPropsFile = File(rootDir, "version.properties")
+val versionProps = Properties().apply {
+    if (versionPropsFile.exists()) load(versionPropsFile.inputStream())
+}
+// Bump versionCode on every build so each APK is uniquely identifiable.
+var buildNumber = (versionProps["BUILD_NUMBER"]?.toString()?.toIntOrNull() ?: 1) + 1
+versionProps["BUILD_NUMBER"] = buildNumber.toString()
+versionProps.store(versionPropsFile.writer(), "Hermes Drive auto-incremented build number")
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -12,8 +25,11 @@ android {
         applicationId = "com.hermes.drive"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = buildNumber
+        versionName = "0.2.0-b$buildNumber"
+        // Expose build metadata to the app (Settings screen + debug log).
+        buildConfigField("int", "BUILD_NUMBER", buildNumber.toString())
+        buildConfigField("String", "VERSION_NAME", "\"$versionName\"")
     }
 
     buildTypes {
@@ -39,6 +55,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     packaging {

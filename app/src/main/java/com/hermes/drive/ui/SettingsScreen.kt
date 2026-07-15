@@ -27,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.hermes.drive.settings.HermesSettings
 import com.hermes.drive.settings.SettingsStore
+import com.hermes.drive.BuildConfig
 
 @Composable
 fun SettingsScreen(
@@ -123,6 +124,11 @@ fun SettingsScreen(
             }
             Spacer(Modifier.height(16.dp))
             Text(status, style = MaterialTheme.typography.bodySmall)
+            Spacer(Modifier.height(16.dp))
+            Text(
+                "Build ${BuildConfig.VERSION_NAME}",
+                style = MaterialTheme.typography.labelSmall,
+            )
         }
     }
 }

@@ -9,6 +9,7 @@ import com.hermes.drive.llm.LiteRtEngine
 import com.hermes.drive.session.ChatSession
 import com.hermes.drive.settings.ModelManager
 import com.hermes.drive.settings.SettingsStore
+import com.hermes.drive.BuildConfig
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -34,7 +35,7 @@ class DriveAssistantService : Service() {
         super.onCreate()
         settingsStore = SettingsStore(this)
         ChatNotificationManager.ensureChannel(this)
-        DebugLog.event(this, "Service onCreate")
+        DebugLog.event(this, "Service onCreate — build ${BuildConfig.VERSION_NAME} (code ${BuildConfig.BUILD_NUMBER})")
         session.addAssistant(getString(R.string.engine_loading))
         startForeground(
             ChatNotificationManager.NOTIF_ID,
