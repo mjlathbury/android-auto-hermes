@@ -1,10 +1,19 @@
-*.iml
-.gradle
-/local.properties
-/.idea
-.DS_Store
-/build
-/captures
-.externalNativeBuild
-.cxx
+# Built artifacts
+**/build/
+*.apk
+*.aar
+*.ap_
+*.dex
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Gradle
+.gradle/
+gradle-app.setting
 local.properties
+
+# IDE
+*.iml
+.idea/
+.DS_Store
