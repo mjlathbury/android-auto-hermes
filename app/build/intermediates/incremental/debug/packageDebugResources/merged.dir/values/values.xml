@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Hermes Drive</string>
+    <string name="engine_loading">Starting Hermes…</string>
+    <string name="engine_missing">Model not found. Open Hermes Drive and download it over WiFi.</string>
+    <string name="reply_label">Speak to Hermes</string>
+    <style name="Theme.Hermes" parent="android:Theme.Material.Light.NoActionBar"/>
+</resources>

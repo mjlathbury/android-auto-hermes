@@ -1,0 +1,10 @@
+[
+    {
+        "merged": "com.hermes.drive.app-debug-46:/xml_automotive_app_desc.xml.flat",
+        "source": "com.hermes.drive.app-main-48:/xml/automotive_app_desc.xml"
+    },
+    {
+        "merged": "com.hermes.drive.app-debug-46:/drawable_ic_hermes.xml.flat",
+        "source": "com.hermes.drive.app-main-48:/drawable/ic_hermes.xml"
+    }
+]
