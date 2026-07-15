@@ -4,6 +4,8 @@ import android.Manifest
 import android.os.Build
 import android.os.Bundle
 import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -25,6 +27,20 @@ class SettingsActivity : ComponentActivity() {
     private val permLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission(),
     ) { /* notified either way */ }
+
+    /** Ask the system not to kill the foreground service in the background (battery savers do). */
+    private fun requestBatteryExemption() {
+        if (Build.VERSION.SDK_INT >= 23) {
+            val pm = getSystemService(android.content.Context.POWER_SERVICE) as android.os.PowerManager
+            if (!pm.isIgnoringBatteryOptimizations(packageName)) {
+                try {
+                    startActivity(Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                        data = Uri.parse("package:$packageName")
+                    })
+                } catch (_: Exception) { /* no activity to handle; user can do it manually */ }
+            }
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -77,6 +93,7 @@ class SettingsActivity : ComponentActivity() {
                             running = false
                         } else {
                             try {
+                                requestBatteryExemption()
                                 DriveAssistantService.start(this@SettingsActivity)
                                 running = true
                             } catch (t: Throwable) {

@@ -34,6 +34,10 @@ class DriveAssistantService : Service() {
     override fun onCreate() {
         super.onCreate()
         try {
+            // Marker so we can confirm onCreate actually ran (independent of DebugLog).
+            java.io.File(filesDir, "svc_boot.marker").writeText(
+                "onCreate reached @ ${System.currentTimeMillis()}"
+            )
             settingsStore = SettingsStore(this)
             ChatNotificationManager.ensureChannel(this)
             DebugLog.event(this, "Service onCreate — build ${BuildConfig.VERSION_NAME} (code ${BuildConfig.BUILD_NUMBER})")
@@ -69,10 +73,10 @@ class DriveAssistantService : Service() {
             DebugLog.event(this, "Engine loaded OK")
             session.clear()
             session.addAssistant("Hermes ready. Tap reply and speak.")
-        } catch (e: Exception) {
-            DebugLog.event(this, "Engine load FAILED: ${e.message}")
+        } catch (t: Throwable) {
+            DebugLog.event(this, "Engine load FAILED: ${t::class.java.simpleName}: ${t.message}")
             session.clear()
-            session.addAssistant("Failed to load model: ${e.message}")
+            session.addAssistant("Failed to load model: ${t.message}")
         }
         post()
         loading = false
@@ -105,9 +109,9 @@ class DriveAssistantService : Service() {
                 post()
             }
             DebugLog.event(this, "Answer (${sb.length} chars): ${sb.toString().take(120)}")
-        } catch (e: Exception) {
-            DebugLog.event(this, "Answer FAILED: ${e.message}")
-            session.updateLastAssistant("Sorry, something went wrong: ${e.message}")
+        } catch (t: Throwable) {
+            DebugLog.event(this, "Answer FAILED: ${t::class.java.simpleName}: ${t.message}")
+            session.updateLastAssistant("Sorry, something went wrong: ${t.message}")
         }
         val final = sb.toString().trim().ifEmpty { "(no response)" }
         session.updateLastAssistant(final)
