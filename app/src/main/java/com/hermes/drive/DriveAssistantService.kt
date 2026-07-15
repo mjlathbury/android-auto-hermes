@@ -33,15 +33,20 @@ class DriveAssistantService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        settingsStore = SettingsStore(this)
-        ChatNotificationManager.ensureChannel(this)
-        DebugLog.event(this, "Service onCreate — build ${BuildConfig.VERSION_NAME} (code ${BuildConfig.BUILD_NUMBER})")
-        session.addAssistant(getString(R.string.engine_loading))
-        startForeground(
-            ChatNotificationManager.NOTIF_ID,
-            ChatNotificationManager.buildNotification(this, session.messages, false),
-        )
-        scope.launch { loadEngine() }
+        try {
+            settingsStore = SettingsStore(this)
+            ChatNotificationManager.ensureChannel(this)
+            DebugLog.event(this, "Service onCreate — build ${BuildConfig.VERSION_NAME} (code ${BuildConfig.BUILD_NUMBER})")
+            session.addAssistant(getString(R.string.engine_loading))
+            startForeground(
+                ChatNotificationManager.NOTIF_ID,
+                ChatNotificationManager.buildNotification(this, session.messages, false),
+            )
+            scope.launch { loadEngine() }
+        } catch (t: Throwable) {
+            DebugLog.event(this, "Service onCreate FAILED: ${t::class.java.simpleName}: ${t.message}")
+            try { stopSelf() } catch (_: Exception) {}
+        }
     }
 
     private suspend fun loadEngine() {

@@ -76,8 +76,13 @@ class SettingsActivity : ComponentActivity() {
                             DriveAssistantService.stop(this@SettingsActivity)
                             running = false
                         } else {
-                            DriveAssistantService.start(this@SettingsActivity)
-                            running = true
+                            try {
+                                DriveAssistantService.start(this@SettingsActivity)
+                                running = true
+                            } catch (t: Throwable) {
+                                status = "Could not start: ${t.message}"
+                                running = false
+                            }
                         }
                     },
                     onOpenDebug = {
