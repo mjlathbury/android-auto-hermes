@@ -54,21 +54,22 @@ class LiteRtEngine(
     override suspend fun load() = withContext(Dispatchers.IO) {
         if (conversation != null) return@withContext
 
-        // GPU attempt first.
-        val gpuResult = loadWithBackend(Backend.GPU(), "GPU")
-        if (gpuResult == null) {
-            // success
-            DebugLog.event(context, "Engine loaded OK (backend=GPU)")
-            return@withContext
-        }
-        // GPU failed (exception or hang) -> fall back to CPU.
-        DebugLog.event(context, "GPU backend failed ($gpuResult) -> falling back to CPU")
+        // CPU first: it loads reliably on the Mali-G57 (GPU delegate has been observed to hang
+        // during native init on this device, stalling the whole process). CPU is just a touch
+        // slower to first token — acceptable for a voice assistant.
         val cpuResult = loadWithBackend(Backend.CPU(), "CPU")
         if (cpuResult == null) {
             DebugLog.event(context, "Engine loaded OK (backend=CPU)")
             return@withContext
         }
-        val msg = "Failed to load model on both GPU and CPU. Last error: $cpuResult"
+        // CPU failed -> try GPU as a fallback (in case the device has a working delegate).
+        DebugLog.event(context, "CPU backend failed ($cpuResult) -> trying GPU")
+        val gpuResult = loadWithBackend(Backend.GPU(), "GPU")
+        if (gpuResult == null) {
+            DebugLog.event(context, "Engine loaded OK (backend=GPU)")
+            return@withContext
+        }
+        val msg = "Failed to load model on both CPU and GPU. Last error: $gpuResult"
         DebugLog.event(context, "Engine load FAILED: $msg")
         throw RuntimeException(msg)
     }
