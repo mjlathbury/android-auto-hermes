@@ -1,8 +1,10 @@
 package com.hermes.drive
 
+import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.media.session.MediaSession
 import android.os.IBinder
 import androidx.core.content.ContextCompat
 import com.hermes.drive.llm.LiteRtEngine
@@ -30,6 +32,9 @@ class DriveAssistantService : Service() {
     private var engine: LiteRtEngine? = null
     private val session = ChatSession()
     private var loading = false
+    /** MediaSession makes the OS treat this as a legitimate media/voice component (HyperOS is far
+     *  less likely to kill a mediaPlayback foreground service with an active session). */
+    private var mediaSession: MediaSession? = null
     /** Set true only when WE initiate the stop (Stop button / car disconnect), so onDestroy can
      *  distinguish a user stop from an OS/system kill. */
     private var userStopped = false
@@ -44,6 +49,16 @@ class DriveAssistantService : Service() {
             settingsStore = SettingsStore(this)
             ChatNotificationManager.ensureChannel(this)
             DebugLog.event(this, "Service onCreate — build ${BuildConfig.VERSION_NAME} (code ${BuildConfig.BUILD_NUMBER})")
+            // Establish a media session so the foreground service is seen as user-visible media.
+            val launchIntent = packageManager.getLaunchIntentForPackage(packageName)
+            val pi = PendingIntent.getActivity(
+                this, 0, launchIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            )
+            mediaSession = MediaSession(this, "HermesDrive").apply {
+                setSessionActivity(pi)
+                isActive = true
+            }
             session.addAssistant(getString(R.string.engine_loading))
             startForeground(
                 ChatNotificationManager.NOTIF_ID,
@@ -149,6 +164,8 @@ class DriveAssistantService : Service() {
         val job = scope.coroutineContext[kotlinx.coroutines.Job]
         DebugLog.event(this, "onDestroy — userStopped=$userStopped; engineReady=${engine?.isReady == true}; scopeActive=${job?.isActive == true}")
         scope.cancel()
+        try { mediaSession?.release() } catch (_: Exception) {}
+        mediaSession = null
         engine?.close()
         super.onDestroy()
     }
