@@ -35,6 +35,9 @@ class DriveAssistantService : Service() {
     /** MediaSession makes the OS treat this as a legitimate media/voice component (HyperOS is far
      *  less likely to kill a mediaPlayback foreground service with an active session). */
     private var mediaSession: MediaSession? = null
+    /** Partial WakeLock keeps process importance high so the OS won't reclaim the service when the
+     *  activity closes. Released in onDestroy. */
+    private var wakeLock: android.os.PowerManager.WakeLock? = null
     /** Set true only when WE initiate the stop (Stop button / car disconnect), so onDestroy can
      *  distinguish a user stop from an OS/system kill. */
     private var userStopped = false
@@ -59,6 +62,12 @@ class DriveAssistantService : Service() {
                 setSessionActivity(pi)
                 isActive = true
             }
+            // Partial WakeLock raises process importance so HyperOS can't reclaim the FGS when the
+            // activity closes (observed: stopService fired 9ms after onCreate without it).
+            wakeLock = (getSystemService(android.content.Context.POWER_SERVICE) as android.os.PowerManager)
+                .newWakeLock(android.os.PowerManager.PARTIAL_WAKE_LOCK, "HermesDrive::keepalive")
+            wakeLock?.setReferenceCounted(false)
+            wakeLock?.acquire(6L * 60L * 60L * 1000L) // 6h hard cap; released in onDestroy
             session.addAssistant(getString(R.string.engine_loading))
             startForeground(
                 ChatNotificationManager.NOTIF_ID,
@@ -166,6 +175,8 @@ class DriveAssistantService : Service() {
         scope.cancel()
         try { mediaSession?.release() } catch (_: Exception) {}
         mediaSession = null
+        try { wakeLock?.release() } catch (_: Exception) {}
+        wakeLock = null
         engine?.close()
         super.onDestroy()
     }
