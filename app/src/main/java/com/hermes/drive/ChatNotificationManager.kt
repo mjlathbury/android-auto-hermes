@@ -10,11 +10,15 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.Person
 import androidx.core.app.RemoteInput as CoreRemoteInput
+import androidx.core.content.LocusIdCompat
 import androidx.core.graphics.drawable.IconCompat
 
 /**
- * Builds and posts the MessagingStyle notification that Android Auto surfaces in the car.
- * AA reads new Hermes messages aloud and voice-dictates the driver's reply via RemoteInput.
+ * Builds the notification Hermes shows while driving. A rich MessagingStyle notification is what
+ * Android Auto consumes for read-aloud + voice-dictated replies. The minimal notification (see
+ * buildForegroundNotification) is used only for startForeground(); the rich one is posted
+ * separately. If HyperOS rejects the rich one, the global RemoteServiceException guard swallows
+ * the throw so the process survives.
  */
 object ChatNotificationManager {
 
@@ -22,12 +26,14 @@ object ChatNotificationManager {
     const val NOTIF_ID = 1001
     const val ACTION_REPLY = "com.hermes.drive.ACTION_REPLY"
     const val KEY_TEXT_REPLY = "hermes_reply"
+    private const val SHORTCUT_ID = "hermes_conv"
 
     private fun hermesPerson(context: Context): Person =
         Person.Builder()
             .setName("Hermes")
             .setKey("hermes")
             .setBot(true)
+            .setImportant(true)
             .setIcon(IconCompat.createWithResource(context, R.drawable.ic_hermes))
             .build()
 
@@ -39,12 +45,29 @@ object ChatNotificationManager {
             "Hermes Drive Chat",
             NotificationManagerCompat.IMPORTANCE_HIGH,
         ).apply {
-            setDescription("Voice chat with Hermes while driving")
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                setAllowBubbles(true)
-            }
+            description = "Voice chat with Hermes while driving"
         }
         mgr.createNotificationChannel(chan)
+    }
+
+    /** Registers a long-lived conversation shortcut so the MessagingStyle notification is valid
+     *  on Android 12+ (a MessagingStyle without an associated shortcut falls into a non-conversation
+     *  fallback that some OEMs reject). Safe to call repeatedly. */
+    fun ensureShortcut(context: Context) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return
+        try {
+            val sm = context.getSystemService(android.content.pm.ShortcutManager::class.java)
+            if (sm == null) return
+            if (sm.pinnedShortcuts.any { it.id == SHORTCUT_ID }) return
+            if (sm.dynamicShortcuts.any { it.id == SHORTCUT_ID }) return
+            val info = android.content.pm.ShortcutInfo.Builder(context, SHORTCUT_ID)
+                .setLongLived(true)
+                .setShortLabel("Hermes")
+                .setIcon(android.graphics.drawable.Icon.createWithResource(context, R.drawable.ic_hermes))
+                .setIntent(Intent(context, com.hermes.drive.ui.SettingsActivity::class.java))
+                .build()
+            sm.addDynamicShortcuts(listOf(info))
+        } catch (_: Exception) { /* OEM may restrict; MessagingStyle still posts, just without ranking */ }
     }
 
     fun buildNotification(
@@ -52,8 +75,26 @@ object ChatNotificationManager {
         history: List<Pair<Boolean, String>>,
         showThinking: Boolean,
     ): Notification {
-        val last = history.lastOrNull()?.second ?: "…"
-        val text = if (showThinking) "Thinking…" else last
+        ensureShortcut(context)
+        val person = hermesPerson(context)
+        val style = NotificationCompat.MessagingStyle(person)
+        style.setConversationTitle("Hermes Drive")
+        style.isGroupConversation = false
+        for ((fromUser, text) in history) {
+            val p = if (fromUser) {
+                Person.Builder().setName("You").setKey("you").build()
+            } else {
+                person
+            }
+            style.addMessage(
+                NotificationCompat.MessagingStyle.Message(text, System.currentTimeMillis(), p),
+            )
+        }
+        if (showThinking) {
+            style.addMessage(
+                NotificationCompat.MessagingStyle.Message("…", System.currentTimeMillis(), person),
+            )
+        }
 
         val replyIntent = Intent(context, MessageReplyReceiver::class.java).apply {
             action = ACTION_REPLY
@@ -81,13 +122,11 @@ object ChatNotificationManager {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
-        // Plain (non-MessagingStyle) notification: always valid on HyperOS/Android 12+ and avoids
-        // CannotPostForegroundServiceNotificationException / RemoteServiceException kills.
         return NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_hermes)
-            .setContentTitle("Hermes Drive")
-            .setContentText(text)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(text))
+            .setStyle(style)
+            .setShortcutId(SHORTCUT_ID)
+            .setLocusId(LocusIdCompat(SHORTCUT_ID))
             .setCategory(Notification.CATEGORY_MESSAGE)
             .setOnlyAlertOnce(true)
             .addAction(replyAction)
@@ -99,8 +138,7 @@ object ChatNotificationManager {
     /**
      * Minimal, guaranteed-valid notification used for startForeground(). The full MessagingStyle
      * notification is posted separately (see post) so a malformed rich style can never cause
-     * "Bad notification for startForeground" / CannotPostForegroundServiceNotificationException,
-     * which HyperOS turns into an instant process kill.
+     * "Bad notification for startForeground" / CannotPostForegroundServiceNotificationException.
      */
     fun buildForegroundNotification(context: Context): Notification {
         val openIntent = Intent(context, com.hermes.drive.ui.SettingsActivity::class.java)
