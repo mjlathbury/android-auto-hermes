@@ -70,10 +70,31 @@ class DriveAssistantService : Service() {
             wakeLock?.setReferenceCounted(false)
             wakeLock?.acquire(6L * 60L * 60L * 1000L) // 6h hard cap; released in onDestroy
             session.addAssistant(getString(R.string.engine_loading))
-            startForeground(
-                ChatNotificationManager.NOTIF_ID,
-                ChatNotificationManager.buildNotification(this, session.messages, false),
-            )
+            // Use a minimal, always-valid notification for startForeground(). The rich MessagingStyle
+            // notification is posted separately via post() so a malformed style can't trigger
+            // CannotPostForegroundServiceNotificationException (which HyperOS turns into a kill).
+            try {
+                startForeground(
+                    ChatNotificationManager.NOTIF_ID,
+                    ChatNotificationManager.buildForegroundNotification(this),
+                )
+            } catch (t: Throwable) {
+                DebugLog.event(this, "startForeground FAILED: ${t::class.java.simpleName}: ${t.message}")
+                // Fall back to posting without elevating to foreground so the service can still run.
+                try {
+                    ChatNotificationManager.post(
+                        this,
+                        ChatNotificationManager.buildForegroundNotification(this),
+                    )
+                } catch (_: Exception) {}
+            }
+            // Post the chat-style notification immediately (replaces the minimal one visually).
+            try {
+                ChatNotificationManager.post(
+                    this,
+                    ChatNotificationManager.buildNotification(this, session.messages, false),
+                )
+            } catch (_: Exception) {}
             scope.launch { loadEngine() }
         } catch (t: Throwable) {
             DebugLog.event(this, "Service onCreate FAILED: ${t::class.java.simpleName}: ${t.message}")

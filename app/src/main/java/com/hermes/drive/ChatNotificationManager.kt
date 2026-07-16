@@ -109,6 +109,30 @@ object ChatNotificationManager {
             .build()
     }
 
+    /**
+     * Minimal, guaranteed-valid notification used for startForeground(). The full MessagingStyle
+     * notification is posted separately (see post) so a malformed rich style can never cause
+     * "Bad notification for startForeground" / CannotPostForegroundServiceNotificationException,
+     * which HyperOS turns into an instant process kill.
+     */
+    fun buildForegroundNotification(context: Context): Notification {
+        val openIntent = Intent(context, com.hermes.drive.ui.SettingsActivity::class.java)
+        val openPending = PendingIntent.getActivity(
+            context,
+            1,
+            openIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        return NotificationCompat.Builder(context, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_hermes)
+            .setContentTitle("Hermes Drive")
+            .setContentText("Starting…")
+            .setCategory(Notification.CATEGORY_SERVICE)
+            .setContentIntent(openPending)
+            .setOngoing(true)
+            .build()
+    }
+
     fun post(context: Context, notif: Notification) {
         NotificationManagerCompat.from(context).notify(NOTIF_ID, notif)
     }
