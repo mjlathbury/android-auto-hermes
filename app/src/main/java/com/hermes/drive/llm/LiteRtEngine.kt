@@ -146,8 +146,12 @@ class LiteRtEngine(
     }.flowOn(Dispatchers.IO)
 
     override fun close() {
-        try { conversation?.close() } catch (_: Exception) { /* best effort */ }
-        try { engine?.close() } catch (_: Exception) { /* best effort */ }
+        try { conversation?.close() } catch (e: Exception) {
+            DebugLog.event(context, "Engine close: conversation close failed: ${e.message}")
+        }
+        try { engine?.close() } catch (e: Exception) {
+            DebugLog.event(context, "Engine close: engine close failed: ${e.message}")
+        }
         conversation = null
         engine = null
     }

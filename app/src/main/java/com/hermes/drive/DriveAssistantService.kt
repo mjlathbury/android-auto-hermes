@@ -32,7 +32,7 @@ class DriveAssistantService : Service() {
     private lateinit var settingsStore: SettingsStore
     private var engine: LiteRtEngine? = null
     private val session = ChatSession()
-    private var loading = false
+    @Volatile private var loading = false
     /** MediaSession makes the OS treat this as a legitimate media/voice component (HyperOS is far
      *  less likely to kill a mediaPlayback foreground service with an active session). */
     private var mediaSession: MediaSession? = null
@@ -61,6 +61,7 @@ class DriveAssistantService : Service() {
             )
             mediaSession = MediaSession(this, "HermesDrive").apply {
                 setSessionActivity(pi)
+                setCallback(object : MediaSession.Callback() {})
                 isActive = true
             }
             // Partial WakeLock raises process importance so HyperOS can't reclaim the FGS when the
@@ -120,6 +121,7 @@ class DriveAssistantService : Service() {
         try {
             engine?.load()
             DebugLog.event(this, "Engine loaded OK")
+            RestartReceiver().noteHealthy(this)
             session.clear()
             session.addAssistant("Hermes ready. Tap reply and speak.")
         } catch (t: Throwable) {
@@ -248,16 +250,6 @@ class DriveAssistantService : Service() {
                 action = "com.hermes.drive.ACTION_USER_STOP"
             }
             context.stopService(intent)
-        }
-
-        /** True if any of our activities is currently the foreground/topmost app. */
-        fun isAppForeground(context: Context): Boolean {
-            return try {
-                val am = context.getSystemService(android.app.ActivityManager::class.java)
-                val tasks = am.getRunningTasks(1)
-                if (tasks.isNullOrEmpty()) return false
-                tasks[0].topActivity?.packageName == context.packageName
-            } catch (_: Exception) { false }
         }
     }
 }

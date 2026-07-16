@@ -153,6 +153,8 @@ object ChatNotificationManager {
             .setContentTitle("Hermes Drive")
             .setContentText("Starting…")
             .setCategory(Notification.CATEGORY_SERVICE)
+            .setShortcutId(SHORTCUT_ID)
+            .setLocusId(LocusIdCompat(SHORTCUT_ID))
             .setContentIntent(openPending)
             .setOngoing(true)
             .build()
