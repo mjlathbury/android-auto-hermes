@@ -18,11 +18,13 @@ class HermesApplication : Application() {
         ChatNotificationManager.ensureChannel(this)
         try { java.io.File(filesDir, "app_boot.marker").writeText("app onCreate @ ${System.currentTimeMillis()}") } catch (_: Exception) {}
         Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
+            val isNotifCrash = throwable::class.java.name.contains("RemoteServiceException")
+                    || (throwable.message?.contains("Bad notification", ignoreCase = true) == true)
             try {
                 val f = File(filesDir, "crash.log")
                 val stamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.US).format(Date())
                 val sb = StringBuilder()
-                sb.append("CRASH $stamp on thread ${thread.name}\n")
+                sb.append("CRASH $stamp on thread ${thread.name} ${if (isNotifCrash) "[NOTIF-SWALLOWED]" else ""}\n")
                 sb.append("${throwable::class.java.name}: ${throwable.message}\n")
                 throwable.stackTrace.forEach { sb.append("    at $it\n") }
                 var c = throwable.cause
@@ -34,8 +36,12 @@ class HermesApplication : Application() {
                 val lines = if (f.exists()) f.readLines() else emptyList()
                 f.writeText((lines + sb.toString()).takeLast(200).joinToString("\n"))
             } catch (_: Exception) { /* nothing else we can do */ }
-            // Chain to the default handler so the system still reports the crash normally.
-            defaultHandler?.uncaughtException(thread, throwable)
+            // A "Bad notification" / RemoteServiceException is a system notification-validation
+            // crash, NOT a real app failure — rethrowing it kills the process for no reason.
+            // Swallow it so the foreground service keeps running. Everything else goes to default.
+            if (!isNotifCrash) {
+                defaultHandler?.uncaughtException(thread, throwable)
+            }
         }
     }
 

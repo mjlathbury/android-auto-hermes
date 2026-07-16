@@ -52,25 +52,8 @@ object ChatNotificationManager {
         history: List<Pair<Boolean, String>>,
         showThinking: Boolean,
     ): Notification {
-        val person = hermesPerson(context)
-        val style = NotificationCompat.MessagingStyle(person)
-        style.setConversationTitle("Hermes Drive")
-        style.isGroupConversation = false
-        for ((fromUser, text) in history) {
-            val p = if (fromUser) {
-                Person.Builder().setName("You").setKey("you").build()
-            } else {
-                person
-            }
-            style.addMessage(
-                NotificationCompat.MessagingStyle.Message(text, System.currentTimeMillis(), p),
-            )
-        }
-        if (showThinking) {
-            style.addMessage(
-                NotificationCompat.MessagingStyle.Message("…", System.currentTimeMillis(), person),
-            )
-        }
+        val last = history.lastOrNull()?.second ?: "…"
+        val text = if (showThinking) "Thinking…" else last
 
         val replyIntent = Intent(context, MessageReplyReceiver::class.java).apply {
             action = ACTION_REPLY
@@ -98,9 +81,13 @@ object ChatNotificationManager {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
+        // Plain (non-MessagingStyle) notification: always valid on HyperOS/Android 12+ and avoids
+        // CannotPostForegroundServiceNotificationException / RemoteServiceException kills.
         return NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_hermes)
-            .setStyle(style)
+            .setContentTitle("Hermes Drive")
+            .setContentText(text)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(text))
             .setCategory(Notification.CATEGORY_MESSAGE)
             .setOnlyAlertOnce(true)
             .addAction(replyAction)
