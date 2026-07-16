@@ -30,6 +30,9 @@ class DriveAssistantService : Service() {
     private var engine: LiteRtEngine? = null
     private val session = ChatSession()
     private var loading = false
+    /** Set true only when WE initiate the stop (Stop button / car disconnect), so onDestroy can
+     *  distinguish a user stop from an OS/system kill. */
+    private var userStopped = false
 
     override fun onCreate() {
         super.onCreate()
@@ -83,10 +86,16 @@ class DriveAssistantService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent?.action == "com.hermes.drive.ACTION_USER_STOP") {
+            userStopped = true
+            DebugLog.event(this, "User stop requested")
+            stopSelf()
+            return START_NOT_STICKY
+        }
         val query = intent?.getStringExtra(EXTRA_QUERY)
         DebugLog.event(this, "onStartCommand query=${if (query.isNullOrBlank()) "<none>" else "\"$query\""}")
         if (!query.isNullOrBlank()) scope.launch { handleQuery(query) }
-        return START_STICKY
+        return START_NOT_STICKY
     }
 
     private suspend fun handleQuery(query: String) {
@@ -126,7 +135,19 @@ class DriveAssistantService : Service() {
         )
     }
 
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        DebugLog.event(this, "onTrimMemory level=$level (engineReady=${engine?.isReady == true})")
+    }
+
+    override fun onLowMemory() {
+        super.onLowMemory()
+        DebugLog.event(this, "onLowMemory")
+    }
+
     override fun onDestroy() {
+        val job = scope.coroutineContext[kotlinx.coroutines.Job]
+        DebugLog.event(this, "onDestroy — userStopped=$userStopped; engineReady=${engine?.isReady == true}; scopeActive=${job?.isActive == true}")
         scope.cancel()
         engine?.close()
         super.onDestroy()
@@ -157,7 +178,11 @@ class DriveAssistantService : Service() {
 
         /** Stop the foreground assistant (frees the model from RAM). */
         fun stop(context: Context) {
-            context.stopService(Intent(context, DriveAssistantService::class.java))
+            // Mark intent so the service's onDestroy can tell a user stop from a system kill.
+            val intent = Intent(context, DriveAssistantService::class.java).apply {
+                action = "com.hermes.drive.ACTION_USER_STOP"
+            }
+            context.stopService(intent)
         }
     }
 }
