@@ -208,10 +208,11 @@ class DriveAssistantService : Service() {
         try { wakeLock?.release() } catch (_: Exception) {}
         wakeLock = null
         engine?.close()
-        // If the OS stopped us (not the user) while the app is still in the foreground, restart
-        // shortly so a transient HyperOS FGS-stop during active use self-heals.
-        if (!userStopped && isAppForeground(this)) {
-            DebugLog.event(this, "Scheduling self-restart (OS stop while app foreground)")
+        // If the OS stopped us (not the user), restart shortly so a transient HyperOS FGS-stop
+        // self-heals. With the service in its own :assistant process, app task removal no longer
+        // triggers this, so a restart loop won't occur.
+        if (!userStopped) {
+            DebugLog.event(this, "Scheduling self-restart (OS stop, non-user)")
             try { RestartReceiver().schedule(this) } catch (_: Exception) {}
         }
         super.onDestroy()

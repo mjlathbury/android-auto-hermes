@@ -33,7 +33,8 @@
             android:name=".DriveAssistantService"
             android:exported="false"
             android:foregroundServiceType="mediaPlayback"
-            android:stopWithTask="false" />
+            android:stopWithTask="false"
+            android:process=":assistant" />
 
         <receiver
             android:name=".RestartReceiver"
