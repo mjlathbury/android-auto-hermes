@@ -32,7 +32,12 @@
         <service
             android:name=".DriveAssistantService"
             android:exported="false"
-            android:foregroundServiceType="mediaPlayback" />
+            android:foregroundServiceType="mediaPlayback"
+            android:stopWithTask="false" />
+
+        <receiver
+            android:name=".RestartReceiver"
+            android:exported="false" />
 
         <receiver
             android:name=".MessageReplyReceiver"

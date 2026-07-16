@@ -8,6 +8,7 @@ import android.media.session.MediaSession
 import android.os.IBinder
 import androidx.core.content.ContextCompat
 import com.hermes.drive.llm.LiteRtEngine
+import com.hermes.drive.RestartReceiver
 import com.hermes.drive.session.ChatSession
 import com.hermes.drive.settings.ModelManager
 import com.hermes.drive.settings.SettingsStore
@@ -159,6 +160,14 @@ class DriveAssistantService : Service() {
         )
     }
 
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        // App's task was swiped away / closed. With stopWithTask=false the service should keep
+        // running; this log confirms whether HyperOS honours it. If it still stops, the
+        // RestartReceiver self-heal in onDestroy handles transient kills.
+        DebugLog.event(this, "onTaskRemoved — keeping service alive (stopWithTask=false)")
+        super.onTaskRemoved(rootIntent)
+    }
+
     override fun onTrimMemory(level: Int) {
         super.onTrimMemory(level)
         DebugLog.event(this, "onTrimMemory level=$level (engineReady=${engine?.isReady == true})")
@@ -178,6 +187,12 @@ class DriveAssistantService : Service() {
         try { wakeLock?.release() } catch (_: Exception) {}
         wakeLock = null
         engine?.close()
+        // If the OS stopped us (not the user) while the app is still in the foreground, restart
+        // shortly so a transient HyperOS FGS-stop during active use self-heals.
+        if (!userStopped && isAppForeground(this)) {
+            DebugLog.event(this, "Scheduling self-restart (OS stop while app foreground)")
+            try { RestartReceiver().schedule(this) } catch (_: Exception) {}
+        }
         super.onDestroy()
     }
 
@@ -211,6 +226,16 @@ class DriveAssistantService : Service() {
                 action = "com.hermes.drive.ACTION_USER_STOP"
             }
             context.stopService(intent)
+        }
+
+        /** True if any of our activities is currently the foreground/topmost app. */
+        fun isAppForeground(context: Context): Boolean {
+            return try {
+                val am = context.getSystemService(android.app.ActivityManager::class.java)
+                val tasks = am.getRunningTasks(1)
+                if (tasks.isNullOrEmpty()) return false
+                tasks[0].topActivity?.packageName == context.packageName
+            } catch (_: Exception) { false }
         }
     }
 }
