@@ -1,5 +1,6 @@
 package com.hermes.drive.ui
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -20,6 +21,9 @@ class DebugActivity : ComponentActivity() {
                     DebugScreen(
                         log = DebugLog.read(this),
                         onClear = { DebugLog.file(this).delete(); recreate() },
+                        onShare = {
+                            startActivity(Intent.createChooser(DebugLog.shareIntent(this), "Send debug log"))
+                        },
                         modifier = Modifier.padding(16.dp),
                     )
                 }
